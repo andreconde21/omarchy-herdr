@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "andreconde.herdr",
+  "name": "Herdr",
+  "version": "1.0.0",
+  "author": "André Conde",
+  "license": "MIT",
+  "description": "Herdr workspace monitor for the Omarchy bar: local or remote workspaces with native agent status (waiting/working/done/idle), click to focus, two-click close.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Herdr.qml"
+  },
+  "barWidget": {
+    "displayName": "Herdr",
+    "description": "Polls a Herdr server — local or over SSH — and lists workspaces with the agent state Herdr itself reports.",
+    "category": "Monitoring",
+    "aliases": [
+      "herdr"
+    ],
+    "allowMultiple": true,
+    "defaults": {
+      "host": "",
+      "refreshIntervalSec": 20,
+      "hideIdle": false,
+      "herdrPath": ""
+    },
+    "schema": [
+      {
+        "key": "host",
+        "type": "string",
+        "label": "SSH host",
+        "defaultValue": "",
+        "description": "Leave empty to poll the Herdr server on this machine. Otherwise an SSH host or alias from ~/.ssh/config; polled with plain ssh (BatchMode)."
+      },
+      {
+        "key": "refreshIntervalSec",
+        "type": "integer",
+        "label": "Refresh interval (seconds)",
+        "min": 10,
+        "max": 300,
+        "step": 5,
+        "defaultValue": 20
+      },
+      {
+        "key": "hideIdle",
+        "type": "boolean",
+        "label": "Hide idle workspaces",
+        "defaultValue": false,
+        "description": "Show only workspaces whose agent is waiting, working or done. Useful when you run many workspaces."
+      },
+      {
+        "key": "herdrPath",
+        "type": "string",
+        "label": "Herdr binary path",
+        "defaultValue": "",
+        "description": "Leave empty to auto-detect: ~/.local/bin/herdr if present, otherwise 'herdr' from PATH. Set an explicit path when several Herdr versions are installed (a distro package plus a user install, say)."
+      }
+    ]
+  }
+}
