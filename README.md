@@ -9,8 +9,8 @@ machine or on a server over SSH.
 
 - Lists Herdr workspaces with the agent state **Herdr itself reports** — waiting, working, done or idle
 - Turns the bar icon urgent only when an agent is actually blocked on you
-- Click a workspace to focus it on the server; two clicks close it
-- Opens a Herdr client in a terminal from the panel header
+- Click a workspace to open it in a terminal; two clicks on the × close it
+- Focuses the workspace on the server first, so the client lands where you clicked
 - Optionally hides idle workspaces, for when you run a lot of them
 
 Because Herdr classifies its own agents, there are no pane-scraping heuristics here. A widget for a

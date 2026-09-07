@@ -223,12 +223,19 @@ Panel {
   // else did not come from Herdr, so it never reaches a command line.
   function isSafeId(id) { return /^[A-Za-z0-9:_-]{1,64}$/.test(String(id)) }
 
-  // Focus is deliberately cheap: it moves the focus on the server, so an
-  // already-attached client jumps there instead of spawning another terminal.
-  function focusWorkspace(id) {
+  // Clicking a row opens that workspace in a terminal, the way attaching to a
+  // tmux window did. Focus is set on the server first so the client that comes
+  // up lands on the workspace you clicked, not wherever focus happened to be.
+  function openWorkspace(id) {
     if (!root.isSafeId(id)) return
-    actionProc.command = root.herdrCommand("workspace focus " + id)
-    actionProc.running = true
+    var script = root.resolveBin
+      + "\"$H\" workspace focus " + id + " >/dev/null 2>&1; exec \"$H\""
+    if (root.isLocal) {
+      Quickshell.execDetached(["uwsm-app", "--", "xdg-terminal-exec", "bash", "-c", script])
+    } else {
+      Quickshell.execDetached(["uwsm-app", "--", "xdg-terminal-exec",
+                               "ssh", "-t", root.host, script])
+    }
     root.close()
   }
 
@@ -276,13 +283,6 @@ Panel {
       // Non-zero with no usable stdout means we never reached a Herdr server.
       if (code !== 0 && !root.connected) { root.everPolled = true; root.serverDown = false }
     }
-  }
-
-  Process {
-    id: actionProc
-    running: false
-    onExited: root.refresh()
-    stderr: StdioCollector { waitForEnd: true }
   }
 
   Process {
@@ -482,7 +482,7 @@ Panel {
             visible: root.connected && root.shown.length > 0
             width: parent.width
             topPadding: Style.space(4)
-            text: "Click to focus · close needs 2 clicks · r refresh"
+            text: "Click to open · close needs 2 clicks · r refresh"
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -523,7 +523,7 @@ Panel {
       anchors.fill: parent
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onClicked: if (wsRow.ws) root.focusWorkspace(wsRow.ws.id)
+      onClicked: if (wsRow.ws) root.openWorkspace(wsRow.ws.id)
     }
 
     Text {
