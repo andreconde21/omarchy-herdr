@@ -59,9 +59,12 @@ Panel {
 
   function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
 
-  // Text elements default to styled text, so anything that came off the wire
-  // (workspace labels, agent titles, the host string) is escaped before it is
-  // rendered. A label containing "<b>" should read as "<b>", not turn bold.
+  // Every Text element in this file sets textFormat: Text.PlainText, so values
+  // off the wire cannot be interpreted as markup there. This escape is for the
+  // remaining sinks whose internal Text element we do NOT control — component
+  // properties like tooltipText and PanelHero's title/meta. Qt's default is
+  // Text.AutoText, which sniffs for HTML and will happily load remote resources
+  // out of a hostile payload, so untrusted values need one or the other.
   function plainText(s) {
     return String(s === undefined || s === null ? "" : s)
       .replace(/&/g, "&amp;")
@@ -178,7 +181,9 @@ Panel {
       var st = root.statusFor(raw)
       out.push({
         id: w.workspace_id,
-        number: w.number,
+        // Coerced: this arrives as JSON from a possibly remote server, so it is
+        // not trusted to be a number just because the field is called "number".
+        number: Number(w.number) || 0,
         label: w.label || w.workspace_id,
         status: st.status,
         statusLabel: st.label,
@@ -412,6 +417,7 @@ Panel {
                 color: root.foreground
                 font.family: root.fontFamily
                 font.pixelSize: Style.font.display
+                textFormat: Text.PlainText
               }
             }
 
@@ -431,8 +437,8 @@ Panel {
             width: parent.width
             topPadding: Style.space(16)
             text: root.serverDown
-              ? "No Herdr server running on " + root.plainText(root.label) + ".\nStart one with 'herdr'."
-              : "Can't reach " + root.plainText(root.label) + ".\nRetrying every "
+              ? "No Herdr server running on " + root.label + ".\nStart one with 'herdr'."
+              : "Can't reach " + root.label + ".\nRetrying every "
                 + Math.round(root.refreshMs / 1000) + "s."
             color: root.dim
             font.family: root.fontFamily
@@ -533,6 +539,7 @@ Panel {
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
+      textFormat: Text.PlainText
       width: Style.space(16)
       horizontalAlignment: Text.AlignHCenter
       anchors.left: parent.left
@@ -551,10 +558,11 @@ Panel {
       Text {
         id: nameText
         width: parent.width
-        text: wsRow.ws ? root.plainText(wsRow.ws.label) : ""
+        text: wsRow.ws ? wsRow.ws.label : ""
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
+        textFormat: Text.PlainText
         elide: Text.ElideRight
       }
 
@@ -565,13 +573,14 @@ Panel {
         // to the raw pane count.
         text: {
           if (!wsRow.ws) return ""
-          if (wsRow.ws.title !== "") return root.plainText(wsRow.ws.title)
-          if (wsRow.ws.agent !== "") return root.plainText(wsRow.ws.agent)
+          if (wsRow.ws.title !== "") return wsRow.ws.title
+          if (wsRow.ws.agent !== "") return wsRow.ws.agent
           return wsRow.ws.paneCount + " pane" + (wsRow.ws.paneCount === 1 ? "" : "s")
         }
         color: root.dim
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
+        textFormat: Text.PlainText
         elide: Text.ElideRight
       }
     }
@@ -616,7 +625,7 @@ Panel {
       hoverColor: root.urgent
       fontFamily: root.fontFamily
       tooltipText: wsRow.closeArmed
-        ? "Click again to close workspace '" + (wsRow.ws ? wsRow.ws.label : "") + "'"
+        ? "Click again to close workspace '" + root.plainText(wsRow.ws ? wsRow.ws.label : "") + "'"
         : "Close workspace (two clicks)"
       onClicked: if (wsRow.ws) root.requestClose(wsRow.ws.id)
     }
