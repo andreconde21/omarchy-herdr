@@ -25,6 +25,21 @@ herdr agent list         # which agent is in which workspace, and its live state
 `agent_status` is one of `idle`, `working`, `blocked`, `done`, `unknown`. `blocked` — an agent
 sitting on a permission prompt or a question — is the one that lights up the bar.
 
+
+## With sheprd
+
+If you run [sheprd](https://github.com/andreconde21/sheprd) (a herdr client fork
+that groups agents from every machine into projects), the widget also reads the
+status file sheprd keeps while it runs:
+
+- The bar shows **`● N`**: agents that need you across *all* machines (blocked,
+  finished and not looked at, or marked unread in sheprd), urgent when one is blocked.
+- The panel opens with "N need you · today 2h10m · 3.1M tokens" and the projects
+  waiting on you.
+
+When sheprd isn't running, the widget behaves exactly as before. Turn it off
+with the *Use sheprd status* setting.
+
 ## Requirements
 
 - Omarchy / Quickshell plugin support

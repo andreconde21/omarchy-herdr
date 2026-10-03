@@ -31,6 +31,14 @@ Panel {
   readonly property int refreshMs: Math.max(10, setting("refreshIntervalSec", 20)) * 1000
   readonly property bool hideIdle: setting("hideIdle", false)
   readonly property string herdrPath: setting("herdrPath", "")
+  // sheprd (github.com/andreconde21/sheprd) writes a small status file while it
+  // runs: who needs you across every machine, and today's time/tokens.
+  readonly property bool useSheprd: setting("useSheprd", true)
+  readonly property string sheprdPath:
+    (Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state"))
+    + "/herdr/sheprd-status.json"
+  property var sheprd: null        // parsed status while fresh, else null
+  readonly property int sheprdNeeds: sheprd ? (sheprd.needs_you || 0) : 0
 
   readonly property bool isLocal: root.host === ""
   readonly property string label: root.isLocal ? "this machine" : root.host
@@ -119,6 +127,33 @@ Panel {
 
   function refresh() {
     if (!pollProc.running) pollProc.running = true
+    readSheprd()
+  }
+
+  function readSheprd() {
+    if (root.useSheprd && !sheprdProc.running) sheprdProc.running = true
+  }
+
+  // Number-only freshness check (no date-string parsing): stale after 90s,
+  // i.e. sheprd is not running, and the widget falls back to plain Herdr.
+  function applySheprd(text) {
+    var status = null
+    try { status = JSON.parse(text) } catch (e) { status = null }
+    var fresh = status && typeof status.updated === "number"
+      && (Date.now() / 1000 - status.updated) < 90
+    root.sheprd = fresh ? status : null
+  }
+
+  function formatMinutes(m) {
+    m = Math.max(0, Math.floor(m || 0))
+    return m >= 60 ? Math.floor(m / 60) + "h" + ("0" + (m % 60)).slice(-2) + "m" : m + "m"
+  }
+
+  function formatTokens(t) {
+    t = Math.max(0, t || 0)
+    if (t >= 1000000) return (t / 1000000).toFixed(1) + "M"
+    if (t >= 1000) return Math.floor(t / 1000) + "k"
+    return String(t)
   }
 
   // Map Herdr's own vocabulary onto what the panel shows. "blocked" is the one
@@ -291,6 +326,27 @@ Panel {
   }
 
   Process {
+    id: sheprdProc
+    running: false
+    command: ["cat", root.sheprdPath]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.applySheprd(text)
+    }
+    stderr: StdioCollector { waitForEnd: true }
+    onExited: function(code) { if (code !== 0) root.sheprd = null }
+  }
+
+  Timer {
+    id: sheprdTimer
+    interval: 5000
+    running: root.useSheprd
+    repeat: true
+    triggeredOnStart: true
+    onTriggered: root.readSheprd()
+  }
+
+  Process {
     id: closeProc
     running: false
     onExited: root.refresh()
@@ -339,12 +395,16 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.connected ? " " + root.workspaces.length : ""
+    // With sheprd running, the count is "agents that need you" across every
+    // machine (including manual unread marks); otherwise the workspace count.
+    text: root.sheprdNeeds > 0 ? " ● " + root.sheprdNeeds
+        : (root.connected ? " " + root.workspaces.length : "")
     fontSize: Style.bar.iconFont
-    dimmed: !root.connected
+    dimmed: !root.connected && root.sheprd === null
     // Urgent only when an agent is blocked on the user — the one state that
     // actually needs him. Working agents are busy, not waiting.
-    active: root.connected && root.waitingCount > 0
+    active: (root.connected && root.waitingCount > 0)
+            || (root.sheprd !== null && root.sheprd.blocked === true)
     tooltipText: root.connected
       ? root.plainText(root.label) + " · " + root.workspaces.length + " workspace"
         + (root.workspaces.length === 1 ? "" : "s")
@@ -428,6 +488,41 @@ Panel {
                 foreground: root.foreground
                 fontFamily: root.fontFamily
                 onClicked: root.refresh()
+              }
+            }
+          }
+
+          // sheprd: who needs you across machines, and today's usage.
+          Column {
+            visible: root.sheprd !== null
+            width: parent.width
+            spacing: Style.space(4)
+
+            Text {
+              width: parent.width
+              text: root.sheprd
+                ? (root.sheprdNeeds > 0 ? root.sheprdNeeds + " need you" : "Nothing needs you")
+                  + " · today " + root.formatMinutes(root.sheprd.today_minutes)
+                  + " · " + root.formatTokens(root.sheprd.today_tokens) + " tokens"
+                : ""
+              color: root.sheprdNeeds > 0 ? root.foreground : root.dim
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.body
+              textFormat: Text.PlainText
+              elide: Text.ElideRight
+            }
+
+            Repeater {
+              model: root.sheprd && root.sheprd.projects ? root.sheprd.projects : []
+              delegate: Text {
+                required property var modelData
+                width: column.width
+                text: "● " + String(modelData.name) + "  " + Number(modelData.needs)
+                color: root.sheprd && root.sheprd.blocked ? root.urgent : root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.body
+                textFormat: Text.PlainText
+                elide: Text.ElideRight
               }
             }
           }

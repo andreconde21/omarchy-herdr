@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "andreconde.herdr",
   "name": "Herdr",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": "André Conde",
   "license": "MIT",
-  "description": "Herdr workspace monitor for the Omarchy bar: local or remote workspaces with native agent status (waiting/working/done/idle), click to focus, two-click close.",
+  "description": "Herdr workspace monitor for the Omarchy bar: local or remote workspaces with native agent status (waiting/working/done/idle), click to focus, two-click close. With sheprd running, shows who needs you across all machines and today's usage.",
   "kinds": [
     "bar-widget"
   ],
@@ -24,7 +24,8 @@
       "host": "",
       "refreshIntervalSec": 20,
       "hideIdle": false,
-      "herdrPath": ""
+      "herdrPath": "",
+      "useSheprd": true
     },
     "schema": [
       {
@@ -56,6 +57,13 @@
         "label": "Herdr binary path",
         "defaultValue": "",
         "description": "Leave empty to auto-detect: ~/.local/bin/herdr if present, otherwise 'herdr' from PATH. Set an explicit path when several Herdr versions are installed (a distro package plus a user install, say)."
+      },
+      {
+        "key": "useSheprd",
+        "type": "boolean",
+        "label": "Use sheprd status",
+        "defaultValue": true,
+        "description": "When sheprd (a herdr client fork) is running, show agents that need you across every machine and today's time/tokens. Falls back to plain Herdr when sheprd isn't running."
       }
     ]
   }
